@@ -1,0 +1,51 @@
+# This repo will be PUBLIC — GitHub Pages' free tier requires it (ADR-0008).
+# Everything here is either a secret, a local artefact, or a superseded draft.
+
+# ── credentials ───────────────────────────────────────────────────────────────
+# The deployment id and secret are entered per device and live in localStorage
+# (ADR-0004). Nothing of the sort belongs in a repo, least of all a public one.
+*creds*
+*Creds*
+*CREDS*
+*secret*
+*Secret*
+.env
+.env.*
+.clasprc.json          # clasp's Google credentials, if clasp is ever used
+secrets.json
+
+# ── local machine ─────────────────────────────────────────────────────────────
+.claude/settings.local.json
+.DS_Store
+*.log
+
+# ── superseded TypeScript draft (ADR-0006: no build toolchain) ────────────────
+# Also stops a toolchain being reintroduced by accident.
+*.ts
+*.tsx
+package.json
+package-lock.json
+tsconfig*.json
+vite.config.*
+node_modules/
+dist/
+.vite/
+
+# ── project notes, kept out of the public repo ────────────────────────────────
+# Requirements, ADRs, the deploy guide and the TODO. Owner's decision: the repo is
+# public, and these are not for publication.
+#
+# The trade is real: docs/ now lives only on this machine, with no history and no
+# backup. Worth a private mirror or a periodic copy somewhere durable.
+docs/
+CLAUDE.md
+REQUIREMENTS.md
+apps-script/README.md
+
+# `apps-script/*.gs` stays tracked — it is source, it holds no secret (SHARED_SECRET is
+# a placeholder there), and losing it would mean losing the backend. GitHub Pages does
+# not serve it: .github/workflows/pages.yml stages only the app files.
+#
+# What that leaves public: the app, the Apps Script sources, the tests and the dev
+# server — code only. Every prose file is local-only and exists in exactly one place on
+# one machine: no history, no backup. Worth a private mirror.

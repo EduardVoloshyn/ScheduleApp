@@ -1,0 +1,665 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--text-md);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ------------------------------------------------------------------ shell ---- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-3);
+  /* Wraps rather than squeezing: with several categories a phone cannot fit one line,
+     and shrinking the chips would make them unreadable before it made them fit. */
+  flex-wrap: wrap;
+  row-gap: var(--gap-2);
+  padding: var(--gap-3) var(--gap-4);
+  border-bottom: 1px solid var(--rule);
+}
+
+.app__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.app__spacer { flex: 1; }
+
+.app__status {
+  font-size: var(--text-xs);
+  color: var(--ink-quiet);
+  font-variant-numeric: tabular-nums;
+}
+
+.app__button {
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--ink-quiet);
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+.app__button:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-faint); }
+.app__button:disabled { opacity: 0.5; cursor: default; }
+
+.app__scroll {
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ------------------------------------------------------------------- week ---- */
+
+.week {
+  display: grid;
+  grid-template-columns: var(--gutter) repeat(7, minmax(5.5rem, 1fr));
+  min-width: min-content;
+}
+
+/* Headers stay put while the hours scroll under them. */
+.week__head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.week__day-name {
+  padding: var(--gap-2) var(--gap-2) var(--gap-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--ink-quiet);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * The tint runs up into the header, so today reads as one continuous column rather
+ * than a tinted body with a white cap. It has to be declared after `.week__head`,
+ * which sets its own background for the sticky scroll.
+ */
+.week__day-name--today {
+  color: var(--ink);
+  font-weight: 600;
+  background: var(--today);
+}
+
+/* --------------------------------------------------------------- the axis ---- */
+
+.axis {
+  position: relative;
+  grid-column: 1;
+}
+
+.axis__label {
+  position: absolute;
+  right: var(--gap-2);
+  transform: translateY(-50%);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- columns ---- */
+
+.day {
+  position: relative;
+  border-left: 1px solid var(--rule);
+}
+
+.day--today { background: var(--today); }
+
+.day__line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid var(--rule);
+  pointer-events: none;
+}
+
+.day__now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid var(--now);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.day__now::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--now);
+}
+
+/* ----------------------------------------------------------------- events ---- */
+
+.event {
+  position: absolute;
+  overflow: hidden;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--event-line);
+  border-left: 2px solid var(--event-line);
+  border-radius: var(--radius);
+  background: var(--event-bg);
+  color: var(--event-ink);
+  /* A 1-minute event would otherwise be invisible. */
+  min-height: 1.15rem;
+  z-index: 1;
+}
+
+.event__title {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event__time,
+.event__note {
+  font-size: var(--text-xs);
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event--slate  { --event-bg: var(--slate-bg);  --event-line: var(--slate-line);  --event-ink: var(--slate-ink); }
+.event--blue   { --event-bg: var(--blue-bg);   --event-line: var(--blue-line);   --event-ink: var(--blue-ink); }
+.event--red    { --event-bg: var(--red-bg);    --event-line: var(--red-line);    --event-ink: var(--red-ink); }
+.event--amber  { --event-bg: var(--amber-bg);  --event-line: var(--amber-line);  --event-ink: var(--amber-ink); }
+.event--green  { --event-bg: var(--green-bg);  --event-line: var(--green-line);  --event-ink: var(--green-ink); }
+.event--violet { --event-bg: var(--violet-bg); --event-line: var(--violet-line); --event-ink: var(--violet-ink); }
+.event--teal   { --event-bg: var(--teal-bg);   --event-line: var(--teal-line);   --event-ink: var(--teal-ink); }
+.event--rose   { --event-bg: var(--rose-bg);   --event-line: var(--rose-line);   --event-ink: var(--rose-ink); }
+
+/* ------------------------------------------------------------- setup/notes ---- */
+
+.centred {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: var(--gap-4);
+}
+
+.card {
+  width: 100%;
+  max-width: 26rem;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: var(--gap-6);
+}
+
+.card h2 { margin: 0 0 var(--gap-2); font-size: var(--text-lg); font-weight: 600; }
+.card p { margin: 0 0 var(--gap-4); color: var(--ink-quiet); font-size: var(--text-sm); }
+
+.field { display: block; margin-bottom: var(--gap-3); }
+.field span {
+  display: block;
+  margin-bottom: var(--gap-1);
+  font-size: var(--text-xs);
+  color: var(--ink-quiet);
+}
+.field__hint {
+  display: block;
+  margin-top: var(--gap-1);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+.field input {
+  width: 100%;
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: 0.5rem 0.6rem;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+}
+
+.notice {
+  margin: var(--gap-3) var(--gap-4) 0;
+  padding: var(--gap-2) var(--gap-3);
+  font-size: var(--text-sm);
+  color: var(--red-ink);
+  background: var(--red-bg);
+  border: 1px solid var(--red-line);
+  border-radius: var(--radius);
+}
+
+/* ==================================================== editing affordances ==== */
+
+.week--editing .day { cursor: copy; }
+.week--editing .event { cursor: grab; }
+.week--editing .event--dragging { cursor: grabbing; opacity: 0.9; z-index: 4; }
+
+/* Resize grip: invisible until hover, so a calm view stays calm. */
+.event__grip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+.event__grip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 1.4rem;
+  height: 2px;
+  margin-left: -0.7rem;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.event:hover .event__grip::after { opacity: 0.35; }
+
+/* Pointer events must not be stolen by the browser's own scroll/zoom gestures. */
+.week--editing .day,
+.week--editing .event { touch-action: none; }
+
+/* A letter label rather than an icon: fixed box so D and W do not shift the toolbar. */
+.app__button--glyph {
+  min-width: 2.1rem;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.app__button--primary {
+  color: var(--surface);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.app__button--primary:hover:not(:disabled) { color: var(--surface); opacity: 0.9; }
+.app__button--danger { color: var(--red-ink); border-color: var(--red-line); }
+.app__button--danger:hover:not(:disabled) { color: var(--red-ink); background: var(--red-bg); }
+
+/* ================================================================= sheets ==== */
+
+.sheet {
+  width: min(30rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.sheet::backdrop { background: rgb(0 0 0 / 0.35); }
+
+.sheet__form { padding: var(--gap-4); }
+.sheet__heading { margin: 0 0 var(--gap-3); font-size: var(--text-lg); font-weight: 600; }
+.sheet__hint { margin: 0 0 var(--gap-3); color: var(--ink-quiet); font-size: var(--text-sm); }
+.sheet__row { display: flex; gap: var(--gap-3); }
+.sheet__row > * { flex: 1; }
+
+.sheet__title-input { font-size: var(--text-md); }
+
+.sheet__select,
+.field select,
+.field input[type='time'],
+.field input[type='number'],
+.field input[type='range'] {
+  width: 100%;
+  font: inherit;
+  font-size: var(--text-sm);
+  padding: 0.45rem 0.55rem;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+}
+.field input[type='range'] { padding: 0; }
+
+.field--row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+}
+.field--row input[type='checkbox'] { width: auto; margin: 0; }
+.field--row span { margin: 0; font-size: var(--text-sm); color: var(--ink); }
+
+.sheet__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  flex-wrap: wrap;
+  margin-top: var(--gap-4);
+  padding-top: var(--gap-3);
+  border-top: 1px solid var(--rule);
+}
+
+/* --------------------------------------------------------------- swatches ---- */
+
+.swatches { display: flex; gap: var(--gap-2); flex-wrap: wrap; }
+
+.swatch {
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--swatch-line);
+  background: var(--swatch-bg);
+  cursor: pointer;
+}
+.swatch--on { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink-faint); }
+
+.swatch--slate  { --swatch-bg: var(--slate-bg);  --swatch-line: var(--slate-line); }
+.swatch--blue   { --swatch-bg: var(--blue-bg);   --swatch-line: var(--blue-line); }
+.swatch--red    { --swatch-bg: var(--red-bg);    --swatch-line: var(--red-line); }
+.swatch--amber  { --swatch-bg: var(--amber-bg);  --swatch-line: var(--amber-line); }
+.swatch--green  { --swatch-bg: var(--green-bg);  --swatch-line: var(--green-line); }
+.swatch--violet { --swatch-bg: var(--violet-bg); --swatch-line: var(--violet-line); }
+.swatch--teal   { --swatch-bg: var(--teal-bg);   --swatch-line: var(--teal-line); }
+.swatch--rose   { --swatch-bg: var(--rose-bg);   --swatch-line: var(--rose-line); }
+
+/* ------------------------------------------------------------------ chips ---- */
+
+.chips { display: flex; gap: var(--gap-2); flex-wrap: wrap; margin-bottom: var(--gap-3); }
+
+.chip {
+  font: inherit;
+  font-size: var(--text-xs);
+  padding: 0.2rem 0.55rem;
+  color: var(--ink-quiet);
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.chip:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+/* -------------------------------------------------------------- templates ---- */
+
+.templates { display: flex; flex-direction: column; gap: var(--gap-2); }
+.templates__row { display: flex; gap: var(--gap-2); align-items: stretch; }
+
+.templates__pick {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--tpl-line, var(--rule-strong));
+  background: var(--tpl-bg, var(--bg));
+  color: var(--tpl-ink, var(--ink));
+  cursor: pointer;
+}
+.templates__title { flex: 1; }
+.templates__meta { font-size: var(--text-xs); opacity: 0.7; font-variant-numeric: tabular-nums; }
+
+.templates__pick--slate  { --tpl-bg: var(--slate-bg);  --tpl-line: var(--slate-line);  --tpl-ink: var(--slate-ink); }
+.templates__pick--blue   { --tpl-bg: var(--blue-bg);   --tpl-line: var(--blue-line);   --tpl-ink: var(--blue-ink); }
+.templates__pick--red    { --tpl-bg: var(--red-bg);    --tpl-line: var(--red-line);    --tpl-ink: var(--red-ink); }
+.templates__pick--amber  { --tpl-bg: var(--amber-bg);  --tpl-line: var(--amber-line);  --tpl-ink: var(--amber-ink); }
+.templates__pick--green  { --tpl-bg: var(--green-bg);  --tpl-line: var(--green-line);  --tpl-ink: var(--green-ink); }
+.templates__pick--violet { --tpl-bg: var(--violet-bg); --tpl-line: var(--violet-line); --tpl-ink: var(--violet-ink); }
+.templates__pick--teal   { --tpl-bg: var(--teal-bg);   --tpl-line: var(--teal-line);   --tpl-ink: var(--teal-ink); }
+.templates__pick--rose   { --tpl-bg: var(--rose-bg);   --tpl-line: var(--rose-line);   --tpl-ink: var(--rose-ink); }
+
+/* ----------------------------------------------------------------- banner ---- */
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  margin: var(--gap-3) var(--gap-4) 0;
+  padding: var(--gap-2) var(--gap-3);
+  font-size: var(--text-sm);
+  color: var(--blue-ink);
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-line);
+  border-radius: var(--radius);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  flex-wrap: wrap;
+}
+
+/* ======================================================= day navigation ==== */
+
+.daynav {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  padding: var(--gap-2) var(--gap-4) var(--gap-3);
+  border-bottom: 1px solid var(--rule);
+}
+
+.daynav__label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.daynav__name {
+  font-size: var(--text-lg);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink-quiet);
+}
+.daynav__name--today { color: var(--ink); font-weight: 600; }
+
+.daynav__count {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+
+/* A single day gets the full width rather than a narrow column. */
+.app__scroll .week { min-width: 0; }
+
+/* ======================================================== busy indicator ==== */
+
+/*
+ * A read takes ~2.6s and a write ~4s (ADR-0005) — long enough that a static label
+ * reads as broken. The pulse is the honest signal that something is in flight.
+ */
+.app__status--busy::after {
+  content: '';
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-left: 0.4rem;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 1s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app__status--busy::after { animation: none; opacity: 0.6; }
+}
+
+/* ============================================================ small screens ==== */
+
+@media (max-width: 640px) {
+  .app__bar { padding: var(--gap-2) var(--gap-3); }
+  .app__title { font-size: var(--text-sm); }
+  .app__status { font-size: 0.6875rem; }
+  .daynav { padding: var(--gap-2) var(--gap-3) var(--gap-3); }
+  /* Comfortable touch targets without enlarging them on the desktop. */
+  .app__button { padding: 0.45rem 0.7rem; }
+}
+
+/* Standalone (installed) gets the safe-area padding the browser chrome used to provide. */
+@media (display-mode: standalone) {
+  .app__bar { padding-top: max(var(--gap-3), env(safe-area-inset-top)); }
+  .app__scroll { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ================================================================== icons ==== */
+
+/*
+ * Inline flow rather than flex: the gap between icon and title must be a real space
+ * character, and flexbox drops whitespace-only text nodes between items.
+ */
+.event__heading {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.event__icon { font-style: normal; }
+
+.event__heading .event__title {
+  display: inline;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* Borderless, like the colour swatches — the same kind of choice. */
+.icons { display: flex; flex-wrap: wrap; gap: 0.15rem; }
+
+.icons__pick {
+  font-size: var(--text-lg);
+  line-height: 1;
+  padding: 0.25rem;
+  min-width: 2rem;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+.icons__pick:hover { opacity: 1; background: var(--bg); }
+
+.icons__pick--on {
+  opacity: 1;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--ink-faint);
+}
+
+.icons__none { font-size: var(--text-md); color: var(--ink-faint); }
+
+.templates__icon { flex: none; }
+
+/* ============================================================== categories ==== */
+
+.cats {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  /* Separated from the title by a hairline rather than by distance — the toolbar is
+     already tight, and a gap alone read as an accident. */
+  padding-left: var(--gap-3);
+  border-left: 1px solid var(--rule);
+}
+
+.cat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font: inherit;
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  padding: 0.15rem 0.5rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.cat:hover { border-color: var(--ink-faint); }
+
+/* Switched off: recessed rather than removed, so the toggle stays findable. */
+.cat--off {
+  color: var(--ink-faint);
+  background: transparent;
+  border-style: dashed;
+}
+.cat--off .cat__count { opacity: 0.6; }
+
+.cat__count {
+  font-size: var(--text-xs);
+  color: var(--ink-quiet);
+  font-variant-numeric: tabular-nums;
+}
+
+.cat--all { border-style: solid; color: var(--ink-quiet); }
+
+.cats__note {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+/* ================================================== buttons with an icon ==== */
+
+.app__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+/* Sized independently of the label: emoji have their own metrics and would otherwise
+   drag the button's line-height around. */
+.app__button-icon {
+  font-size: 0.9em;
+  line-height: 1;
+}
+
+/* An icon-only button still needs a comfortable target. */
+.templates__edit {
+  flex: none;
+  padding: 0.45rem 0.6rem;
+}
