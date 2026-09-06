@@ -61,16 +61,33 @@ function show(value) {
   }
 }
 
-/** Runs everything registered. Returns results; printing is the caller's job. */
-export function run() {
-  const results = registered.map(({ name, fn }) => {
+/**
+ * Runs everything registered. Returns results; printing is the caller's job.
+ *
+ * Async, and each test is awaited. It used to call `fn()` and ignore the return value,
+ * which meant a test declared `async` could never fail — a rejected promise went
+ * nowhere and the test was recorded as passing. Nine such tests were written before
+ * anyone noticed, so this is worth stating plainly.
+ *
+ * Sequential rather than parallel: tests share the stub DOM and a global fetch, so
+ * running them concurrently would have them tread on each other.
+ *
+ * @returns {Promise<{results: {name: string, passed: boolean, message: string}[],
+ *                    passed: number, failed: number}>}
+ */
+export async function run() {
+  const results = []
+
+  for (const { name, fn } of registered) {
     try {
-      fn()
-      return { name, passed: true, message: '' }
+      // await handles both shapes: a sync test returns undefined, which await passes
+      // straight through.
+      await fn()
+      results.push({ name, passed: true, message: '' })
     } catch (err) {
-      return { name, passed: false, message: err && err.message ? err.message : String(err) }
+      results.push({ name, passed: false, message: err && err.message ? err.message : String(err) })
     }
-  })
+  }
 
   return {
     results,

@@ -24,6 +24,7 @@ import {
 } from './model/categories.js'
 import { ApiError, fetchSchedule, saveSchedule } from './sync/api.js'
 import { hardReset, resetRequested } from './sync/reset.js'
+import { singleFlight } from './sync/single-flight.js'
 import {
   clearCredentials,
   clearPending,
@@ -196,51 +197,66 @@ let saveTimer = 0
 
 function scheduleSave() {
   clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => void flushSave(), SAVE_DEBOUNCE_MS)
+  // flushSave reports failure through state; swallow here so a rejected promise
+  // from a background timer is not an unhandled rejection.
+  saveTimer = setTimeout(() => flushSave().catch(() => {}), SAVE_DEBOUNCE_MS)
 }
 
-async function flushSave() {
-  if (!state.credentials || !state.snapshot) return
+/**
+ * Sends the whole schedule. Wrapped in `singleFlight`, so overlapping edits cannot put
+ * two writes on the wire carrying the same hash — see that module for why that matters.
+ */
+const flushSave = singleFlight(
+  async () => {
+    if (!state.credentials || !state.snapshot) return
 
-  const payload = {
-    hash: state.snapshot.hash,
-    events: state.snapshot.events,
-    templates: state.snapshot.templates,
-    settings: state.snapshot.settings,
-  }
+    const payload = {
+      hash: state.snapshot.hash,
+      events: state.snapshot.events,
+      templates: state.snapshot.templates,
+      settings: state.snapshot.settings,
+    }
 
-  // Persisted *before* the request. A write takes ~4s, which is ample time to close
-  // the tab, and the edit must not vanish if that happens (ADR-0005).
-  savePending(payload)
-  setState({ sync: { status: 'saving' } })
+    // Persisted *before* the request. A write takes ~4s, which is ample time to close
+    // the tab, and the edit must not vanish if that happens (ADR-0005).
+    savePending(payload)
+    setState({ sync: { status: 'saving' } })
 
-  try {
-    const result = await saveSchedule(state.credentials, payload)
-    const snapshot = { ...state.snapshot, hash: result.hash }
-    saveSnapshot(snapshot)
-    clearPending()
-    setState({ snapshot, dirty: false, sync: { status: 'ok' } })
-  } catch (err) {
-    const code = err instanceof ApiError ? err.code : 'unknown'
-    const message = err instanceof ApiError ? err.message : 'Не вдалося зберегти'
-    // The pending payload stays on disk, so nothing is lost.
-    setState({ sync: { status: 'error', message, code } })
-  }
-}
+    try {
+      const result = await saveSchedule(state.credentials, payload)
+      const snapshot = { ...state.snapshot, hash: result.hash }
+      saveSnapshot(snapshot)
+      clearPending()
+      setState({ snapshot, dirty: false, sync: { status: 'ok' } })
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : 'unknown'
+      const message = err instanceof ApiError ? err.message : 'Не вдалося зберегти'
+      // The pending payload stays on disk, so nothing is lost.
+      setState({ sync: { status: 'error', message, code } })
+      throw err
+    }
+  },
+  // Edits made while that save was in flight, collapsed into one follow-up.
+  { onRerun: () => scheduleSave() },
+)
 
 /** Re-reads to pick up the current hash, then re-sends the local edits. */
 async function retryAfterStale() {
   if (!state.credentials || !state.snapshot) return
   setState({ sync: { status: 'saving' } })
+  let fresh
   try {
-    const fresh = await fetchSchedule(state.credentials)
-    const snapshot = { ...state.snapshot, hash: fresh.hash }
-    setState({ snapshot })
-    await flushSave()
+    fresh = await fetchSchedule(state.credentials)
   } catch (err) {
     const message = err instanceof ApiError ? err.message : 'Не вдалося оновити'
     setState({ sync: { status: 'error', message, code: 'network' } })
+    return
   }
+
+  setState({ snapshot: { ...state.snapshot, hash: fresh.hash } })
+  // Failure here is already reported by flushSave, and with a better message than
+  // anything this function could add.
+  await flushSave().catch(() => {})
 }
 
 /** Throws away local edits and takes whatever the Sheet says. */
@@ -702,7 +718,7 @@ function errorNotice() {
       button('Відкинути мої зміни', 'Взяти версію з таблиці', () => void discardLocal()),
     )
   } else if (state.dirty) {
-    append(notice, el('span', 'app__spacer'), button('Повторити', 'Спробувати ще раз', () => void flushSave()))
+    append(notice, el('span', 'app__spacer'), button('Повторити', 'Спробувати ще раз', () => void flushSave().catch(() => {})))
   }
 
   return notice
@@ -773,6 +789,6 @@ if (state.credentials && !requestedReset) {
   // local edit is not silently lost.
   // A save interrupted by the app closing is retried once. If it fails as `invalid`
   // the notice offers a way out, rather than the app retrying it on every open.
-  if (loadPending() && state.dirty) void flushSave()
+  if (loadPending() && state.dirty) flushSave().catch(() => {})
   else void refresh()
 }
