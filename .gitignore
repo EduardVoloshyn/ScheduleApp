@@ -49,3 +49,4 @@ apps-script/README.md
 # What that leaves public: the app, the Apps Script sources, the tests and the dev
 # server — code only. Every prose file is local-only and exists in exactly one place on
 # one machine: no history, no backup. Worth a private mirror.
+/.obsidian
