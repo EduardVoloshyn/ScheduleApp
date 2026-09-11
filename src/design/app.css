@@ -681,8 +681,11 @@ body {
   font-weight: 600;
 }
 
+/* Same size as the number it qualifies — a smaller date read as a footnote rather
+   than as part of the version. */
 .about__date {
-  font-size: var(--text-xs);
+  font-size: var(--text-lg);
+  font-weight: 600;
   color: var(--ink-quiet);
   font-variant-numeric: tabular-nums;
 }

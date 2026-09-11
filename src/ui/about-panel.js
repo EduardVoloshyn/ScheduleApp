@@ -14,9 +14,10 @@ import { RELEASED, VERSION } from '../version.js'
  */
 
 const PLATFORMS = [
-  ['macOS', 'Safari у Dock — ⌘R'],
-  ['Android', 'Chrome → ⋮ → оновити'],
-  ['iPad', 'кнопки оновлення немає: закрийте застосунок у перемикачі та відкрийте знову'],
+  ['macOS · Safari', '⌘R'],
+  ['macOS · Chrome', '⌘R, або ⋮ → «Перезавантажити»'],
+  ['Android · Chrome', '⋮ → «Перезавантажити»'],
+  ['iPad · Safari', 'кнопки оновлення немає: закрийте застосунок у перемикачі та відкрийте знову'],
 ]
 
 /**
@@ -34,7 +35,7 @@ export function aboutPanel({ onClose } = {}) {
   append(
     version,
     el('span', 'about__number', undefined, `Версія ${VERSION}`),
-    el('span', 'about__date', undefined, RELEASED),
+    el('span', 'about__date', undefined, `(${RELEASED})`),
   )
   append(body, version)
 

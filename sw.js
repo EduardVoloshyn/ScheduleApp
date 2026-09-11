@@ -12,7 +12,7 @@
  * BUMP `VERSION` whenever any precached file changes, or clients keep the old copy.
  */
 
-const VERSION = 'v27'
+const VERSION = 'v28'
 const CACHE = `scheduleapp-${VERSION}`
 
 const SHELL = [

@@ -565,7 +565,7 @@ test('the event editor uses the same buttons', () => {
 test('the about panel shows the version and its release date', () => {
   const node = aboutPanel({})
   eq(node.find('about__number').textContent, `Версія ${VERSION}`)
-  eq(node.find('about__date').textContent, RELEASED)
+  eq(node.find('about__date').textContent, `(${RELEASED})`)
 })
 
 test('the release date is a real date, not a placeholder', () => {
@@ -575,12 +575,12 @@ test('the release date is a real date, not a placeholder', () => {
   ok(!Number.isNaN(Date.parse(RELEASED)), 'unparseable date')
 })
 
-test('the about panel explains upgrading on all three platforms', () => {
+test('the about panel explains upgrading on every browser in use', () => {
   const node = aboutPanel({})
   const platforms = node.findAll('about__platforms')[0].children
     .filter((c) => c.tagName === 'DT')
     .map((c) => c.textContent)
-  eq(platforms, ['macOS', 'Android', 'iPad'])
+  eq(platforms, ['macOS · Safari', 'macOS · Chrome', 'Android · Chrome', 'iPad · Safari'])
 })
 
 test('the about panel mentions the reset escape hatch', () => {
