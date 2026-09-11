@@ -267,12 +267,30 @@ test('hasOverlap is true for Saturday, false for Sunday', () => {
 
 /* ----------------------------------------------------------------- lead-in ---- */
 
-test('the week axis leaves an empty hour above the first event', () => {
-  // The earliest event is 10:30 on Неділя; without the lead-in the axis started at
-  // 10:00 and the block sat flush against the header.
+test('the week axis leaves an empty hour either side of the real events', () => {
+  // The schedule runs 10:30–20:30. Without the padding the axis was 10:00–21:00 and
+  // the outermost blocks sat flush against the header and the bottom edge.
   const axis = layoutWeek(SEED_EVENTS).axis
   eq(formatTime(axis.startMin), '09:00')
-  eq(formatTime(axis.endMin), '21:00')
+  eq(formatTime(axis.endMin), '22:00')
+})
+
+test('padding is symmetric, so the week is not top-heavy', () => {
+  const axis = fitAxis([iv('10:00', 120)], { padStartMin: 60, padEndMin: 60 })
+  eq(formatTime(axis.startMin), '09:00')
+  eq(formatTime(axis.endMin), '13:00')
+})
+
+test('the trailing pad still snaps to a whole hour', () => {
+  // 20:30 + 60 is 21:30, which must round out to 22:00 rather than leave a half hour.
+  // The span has to exceed the 4h minimum, or that widens the axis instead and the
+  // snapping is not what is being measured.
+  eq(formatTime(fitAxis([iv('17:00', 210)], { padEndMin: 60 }).endMin), '22:00')
+})
+
+test('the trailing pad never runs past midnight', () => {
+  const axis = fitAxis([iv('22:30', 60)], { padEndMin: 120 })
+  ok(axis.endMin <= 24 * 60, `ended at ${axis.endMin}`)
 })
 
 test('the lead-in still snaps to a whole hour', () => {
@@ -281,8 +299,11 @@ test('the lead-in still snaps to a whole hour', () => {
   eq(formatTime(axis.startMin), '09:00')
 })
 
-test('fitAxis adds no lead-in unless asked', () => {
-  eq(formatTime(fitAxis([iv('10:30', 60)]).startMin), '10:00')
+test('fitAxis adds no padding unless asked', () => {
+  // A span past the 4h minimum, so the bounds are the snapped events and nothing else.
+  const axis = fitAxis([iv('10:30', 300)])
+  eq(formatTime(axis.startMin), '10:00')
+  eq(formatTime(axis.endMin), '16:00')
 })
 
 test('the lead-in never pushes the axis before midnight', () => {

@@ -212,9 +212,10 @@ test('tapping empty space reports a numeric startMin, not undefined', () => {
   ok(received, 'onCreate never fired')
   ok(Number.isFinite(received.startMin), `startMin was ${received.startMin}`)
   ok(Number.isFinite(received.day), `day was ${received.day}`)
-  // The stub column is 600px tall spanning the axis, which runs 09:00–21:00: the real
-  // schedule starts at 10:30, plus LEAD_IN_MIN snapped to the hour. Halfway is 15:00.
-  eq(received.startMin, 15 * 60)
+  // The stub column is 600px tall spanning the axis, which runs 09:00–22:00: the real
+  // schedule is 10:30–20:30, plus EDGE_PAD_MIN either side snapped to whole hours.
+  // Halfway is 15:30.
+  eq(received.startMin, 15 * 60 + 30)
   eq(received.day, 1)
 })
 
