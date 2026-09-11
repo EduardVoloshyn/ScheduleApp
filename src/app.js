@@ -38,6 +38,7 @@ import {
   saveSnapshot,
 } from './sync/storage.js'
 import { append, clear, el } from './ui/dom.js'
+import { aboutPanel } from './ui/about-panel.js'
 import { categoryBar } from './ui/category-bar.js'
 import { editSheet } from './ui/edit-sheet.js'
 import { setupCard } from './ui/setup-card.js'
@@ -455,6 +456,13 @@ function toolbar(cats) {
     ),
   )
 
+  // Last in the row: it is the least-used control, and nothing else should move when
+  // it appears — unlike the templates button, it is always present.
+  const aboutButton = button('?', 'Про застосунок', () => openDialog(aboutPanel({
+    onClose: () => render(),
+  })))
+  aboutButton.className = 'app__button app__button--glyph'
+
   return append(
     bar,
     el('h1', 'app__title', undefined, 'Розклад'),
@@ -469,6 +477,7 @@ function toolbar(cats) {
     editable && templatesButton,
     refreshButton,
     settingsButton,
+    aboutButton,
   )
 }
 

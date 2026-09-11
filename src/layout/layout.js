@@ -27,6 +27,15 @@ import { tryParseTime } from './time.js'
 
 export const DAYS = [1, 2, 3, 4, 5, 6, 7]
 
+/**
+ * Empty space above the first event.
+ *
+ * Without it the earliest block sits flush against the header, which makes the grid
+ * harder to read at a glance — there is nothing to anchor the top of the day against.
+ * An hour is enough to give the first event somewhere to sit.
+ */
+export const LEAD_IN_MIN = 60
+
 /** Full names, no abbreviations and no dates — the model has none. */
 export const DAY_NAMES = {
   1: 'Понеділок',
@@ -130,16 +139,19 @@ export function layoutWeek(events, options = {}) {
   const { fit = 'week', ...fitOptions } = options
   const { ok, invalid } = resolve(events)
 
+  const withLeadIn = { padStartMin: LEAD_IN_MIN, ...fitOptions }
+
   const axis = fitAxis(
     ok.map((r) => r.interval),
-    fitOptions,
+    withLeadIn,
   )
 
   /** @type {Record<number, PlacedEvent[]>} */
   const days = {}
   for (const day of DAYS) {
     const rows = ok.filter((r) => r.day === day)
-    const dayAxis = fit === 'day' ? fitAxis(rows.map((r) => r.interval), fitOptions) : axis
+    const dayAxis =
+      fit === 'day' ? fitAxis(rows.map((r) => r.interval), withLeadIn) : axis
     days[day] = place(rows, dayAxis)
   }
 

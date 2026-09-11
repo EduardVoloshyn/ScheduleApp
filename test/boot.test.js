@@ -141,3 +141,12 @@ test('"show all" restores everything', () => {
   eq(root.findAll('event').length, 2)
   eq(root.findAll('cat--off').length, 0)
 })
+
+test('the toolbar ends with the ? button, in view-only and editing alike', () => {
+  const labels = () => root.findAll('app__button').map((b) => b.textContent)
+  eq(labels().at(-1), '?', `toolbar was ${labels().join(' ')}`)
+
+  const pencil = root.findAll('app__button').find((b) => b.textContent === '✏️')
+  if (pencil) pencil.dispatch('click', {})
+  eq(labels().at(-1), '?', 'the ? moved when editing was enabled')
+})

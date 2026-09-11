@@ -116,7 +116,10 @@ body {
 .axis__label {
   position: absolute;
   right: var(--gap-2);
-  transform: translateY(-50%);
+  /* Just below its own rule rather than centred on it. Centred, the number read as
+     belonging to the hour above as much as the one below; sitting under the line ties
+     it to the hour it opens. */
+  transform: translateY(1px);
   font-size: var(--text-xs);
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
@@ -182,9 +185,6 @@ body {
   font-size: var(--text-sm);
   font-weight: 500;
   line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .event__time,
@@ -549,8 +549,11 @@ body {
  */
 .event__heading {
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  /* Wraps rather than truncating: a long name was unreadable at column width, and a
+     proportional grid has vertical room to spare where it has no horizontal room. The
+     block clips if the text outgrows it, which is the honest failure — the alternative
+     is an ellipsis that hides the difference between two similar names. */
+  overflow-wrap: anywhere;
   font-size: var(--text-sm);
   font-weight: 500;
   line-height: 1.25;
@@ -662,4 +665,51 @@ body {
 .templates__edit {
   flex: none;
   padding: 0.45rem 0.6rem;
+}
+
+/* =================================================================== about ==== */
+
+.about__version {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-2);
+  margin-bottom: var(--gap-4);
+}
+
+.about__number {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.about__date {
+  font-size: var(--text-xs);
+  color: var(--ink-quiet);
+  font-variant-numeric: tabular-nums;
+}
+
+.about__heading {
+  margin: var(--gap-4) 0 var(--gap-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* Platform on the left, what to do on the right — a table would be heavier than this
+   deserves at three rows. */
+.about__platforms {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--gap-1) var(--gap-3);
+  margin: 0 0 var(--gap-3);
+  font-size: var(--text-sm);
+}
+
+.about__platforms dt {
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.about__platforms dd {
+  margin: 0;
+  color: var(--ink-quiet);
 }

@@ -11,6 +11,8 @@ import { settingsPanel } from '../src/ui/settings-panel.js'
 import { templatesPanel } from '../src/ui/templates-panel.js'
 import { categoryBar } from '../src/ui/category-bar.js'
 import { templateSheet } from '../src/ui/template-sheet.js'
+import { aboutPanel } from '../src/ui/about-panel.js'
+import { RELEASED, VERSION } from '../src/version.js'
 
 /*
  * Headless render checks. These do not prove it looks right — only a browser can do
@@ -210,8 +212,9 @@ test('tapping empty space reports a numeric startMin, not undefined', () => {
   ok(received, 'onCreate never fired')
   ok(Number.isFinite(received.startMin), `startMin was ${received.startMin}`)
   ok(Number.isFinite(received.day), `day was ${received.day}`)
-  // The stub column is 600px tall spanning the 10:00–21:00 axis, so halfway is 15:30.
-  eq(received.startMin, 15 * 60 + 30)
+  // The stub column is 600px tall spanning the axis, which runs 09:00–21:00: the real
+  // schedule starts at 10:30, plus LEAD_IN_MIN snapped to the hour. Halfway is 15:00.
+  eq(received.startMin, 15 * 60)
   eq(received.day, 1)
 })
 
@@ -555,4 +558,33 @@ test('the event editor uses the same buttons', () => {
   ok(labels.some((l) => l.includes('Видалити')), 'no delete')
   ok(labels.some((l) => l.includes('Дублювати')), 'no duplicate')
   for (const b of node.findAll('app__button')) ok(b.find('app__button-icon'), `bare "${b.textContent}"`)
+})
+
+/* ------------------------------------------------------------------ about ---- */
+
+test('the about panel shows the version and its release date', () => {
+  const node = aboutPanel({})
+  eq(node.find('about__number').textContent, `Версія ${VERSION}`)
+  eq(node.find('about__date').textContent, RELEASED)
+})
+
+test('the release date is a real date, not a placeholder', () => {
+  // A version carrying a stale or invented date quietly asserts something false about
+  // what you are running.
+  ok(/^\d{4}-\d{2}-\d{2}$/.test(RELEASED), `RELEASED was ${RELEASED}`)
+  ok(!Number.isNaN(Date.parse(RELEASED)), 'unparseable date')
+})
+
+test('the about panel explains upgrading on all three platforms', () => {
+  const node = aboutPanel({})
+  const platforms = node.findAll('about__platforms')[0].children
+    .filter((c) => c.tagName === 'DT')
+    .map((c) => c.textContent)
+  eq(platforms, ['macOS', 'Android', 'iPad'])
+})
+
+test('the about panel mentions the reset escape hatch', () => {
+  // The moment you need it is the moment the app is stale on a phone, with no way to
+  // read a document that lives on a laptop.
+  ok(aboutPanel({}).textContent.includes('?reset'))
 })

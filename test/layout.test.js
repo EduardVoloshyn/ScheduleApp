@@ -264,3 +264,38 @@ test('hasOverlap is true for Saturday, false for Sunday', () => {
   eq(hasOverlap(seedIntervals(6)), true)
   eq(hasOverlap(seedIntervals(7)), false)
 })
+
+/* ----------------------------------------------------------------- lead-in ---- */
+
+test('the week axis leaves an empty hour above the first event', () => {
+  // The earliest event is 10:30 on Неділя; without the lead-in the axis started at
+  // 10:00 and the block sat flush against the header.
+  const axis = layoutWeek(SEED_EVENTS).axis
+  eq(formatTime(axis.startMin), '09:00')
+  eq(formatTime(axis.endMin), '21:00')
+})
+
+test('the lead-in still snaps to a whole hour', () => {
+  // Applied before snapping, so an event at 10:30 gives 09:00, not 09:30.
+  const axis = fitAxis([iv('10:30', 60)], { padStartMin: 60 })
+  eq(formatTime(axis.startMin), '09:00')
+})
+
+test('fitAxis adds no lead-in unless asked', () => {
+  eq(formatTime(fitAxis([iv('10:30', 60)]).startMin), '10:00')
+})
+
+test('the lead-in never pushes the axis before midnight', () => {
+  const axis = fitAxis([iv('00:15', 30)], { padStartMin: 120 })
+  ok(axis.startMin >= 0, `started at ${axis.startMin}`)
+})
+
+test('an empty schedule gets no lead-in, just the fallback window', () => {
+  eq(formatTime(layoutWeek([]).axis.startMin), '08:00')
+})
+
+test('every block still sits inside the axis after the lead-in', () => {
+  for (const placed of Object.values(layoutWeek(SEED_EVENTS).days).flat()) {
+    ok(placed.top >= 0 && placed.top + placed.height <= 1 + 1e-6, placed.event.title)
+  }
+})

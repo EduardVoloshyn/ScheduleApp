@@ -20,13 +20,14 @@ const DEFAULT_FALLBACK = { startMin: 8 * HOUR, endMin: 20 * HOUR }
  * nothing ever happens.
  *
  * @param {ReadonlyArray<import('./time.js').Interval>} intervals
- * @param {{ snapToHour?: boolean, minSpanMin?: number,
+ * @param {{ snapToHour?: boolean, minSpanMin?: number, padStartMin?: number,
  *           fallback?: { startMin: number, endMin: number } }} [options]
  * @returns {Axis}
  */
 export function fitAxis(intervals, options = {}) {
   const snapToHour = options.snapToHour ?? true
   const minSpanMin = options.minSpanMin ?? DEFAULT_MIN_SPAN
+  const padStartMin = options.padStartMin ?? 0
   const fallback = options.fallback ?? DEFAULT_FALLBACK
 
   let startMin
@@ -39,6 +40,10 @@ export function fitAxis(intervals, options = {}) {
     startMin = Math.min(...intervals.map((i) => i.startMin))
     endMin = Math.max(...intervals.map((i) => i.endMin))
   }
+
+  // Lead-in before the first event. Applied before snapping, so the result still
+  // lands on a whole hour.
+  if (intervals.length > 0) startMin -= padStartMin
 
   if (snapToHour) {
     startMin = Math.floor(startMin / HOUR) * HOUR
