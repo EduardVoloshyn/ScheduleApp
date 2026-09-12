@@ -9,7 +9,7 @@ const SHOW_NOTE_ABOVE_MIN = 75
 
 /**
  * @param {import('../layout/layout.js').PlacedEvent} placed
- * @param {{ editing?: boolean, dragging?: boolean }} [options]
+ * @param {{ editing?: boolean }} [options]
  * @returns {HTMLElement}
  */
 export function eventBlock(placed, options = {}) {
@@ -23,12 +23,7 @@ export function eventBlock(placed, options = {}) {
   // A gap between side-by-side blocks, taken from the right so left edges stay aligned.
   const inset = placed.columns > 1 ? 2 : 0
 
-  const classes = [
-    'event',
-    `event--${colour}`,
-    options.editing ? 'event--editable' : '',
-    options.dragging ? 'event--dragging' : '',
-  ]
+  const classes = ['event', `event--${colour}`, options.editing ? 'event--editable' : '']
     .filter(Boolean)
     .join(' ')
 
@@ -59,13 +54,6 @@ export function eventBlock(placed, options = {}) {
       duration >= SHOW_NOTE_ABOVE_MIN &&
       el('div', 'event__note', undefined, event.note),
   )
-
-  // The resize grip only exists while editing, so a read-only device has no dead zones.
-  if (options.editing) {
-    const grip = el('div', 'event__grip')
-    grip.dataset.grip = 'resize'
-    append(node, grip)
-  }
 
   return node
 }

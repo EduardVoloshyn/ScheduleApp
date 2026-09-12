@@ -1,12 +1,8 @@
 import { DAY_NAMES } from '../layout/layout.js'
 import { gridlines, minutesAt, ratio, snapMinutes } from '../layout/index.js'
 import { formatTime } from '../layout/time.js'
-import { MIN_DURATION } from '../model/schedule.js'
 import { append, el } from './dom.js'
 import { eventBlock } from './event-block.js'
-
-/** How far the pointer must travel before a press becomes a drag rather than a tap. */
-const DRAG_THRESHOLD_PX = 4
 
 /**
  * The shared schedule grid: a gutter of hour labels plus one absolutely-positioned
@@ -21,15 +17,12 @@ const DRAG_THRESHOLD_PX = 4
  *           nowMin: number | null,
  *           showHeader?: boolean,
  *           editing?: boolean,
- *           dragId?: string | null,
  *           onCreate?: (slot: { day: number, startMin: number }) => void,
- *           onOpen?: (id: string) => void,
- *           onDrag?: (draft: Object) => void,
- *           onDragEnd?: (draft: Object) => void }} props
+ *           onOpen?: (id: string) => void }} props
  * @returns {HTMLElement}
  */
 export function scheduleGrid(props) {
-  const { layout, days, today, nowMin, showHeader = true, editing = false, dragId = null } = props
+  const { layout, days, today, nowMin, showHeader = true, editing = false } = props
   const { axis } = layout
   const marks = gridlines(axis)
 
@@ -78,7 +71,7 @@ export function scheduleGrid(props) {
     }
 
     for (const placed of layout.days[day]) {
-      append(column, eventBlock(placed, { editing, dragging: placed.event.id === dragId }))
+      append(column, eventBlock(placed, { editing }))
     }
 
     append(grid, column)
@@ -90,13 +83,18 @@ export function scheduleGrid(props) {
 }
 
 /**
- * Pointer handling for create, move and resize.
+ * Tap handling: a tap on empty space proposes a new event, a tap on a block opens it.
  *
- * One pointerdown handler on the grid rather than per-block listeners: the tree is
- * rebuilt on every state change, so per-node handlers would be re-bound constantly.
+ * A plain `click` listener rather than pointerdown/move/up. Drag and resize used to
+ * live here and were removed in 1.2 — they misfired on a tablet, where a press that
+ * drifts a few pixels is the norm rather than the exception, and they forced
+ * `touch-action: none` onto the grid, which broke ordinary scrolling while editing.
+ *
+ * One listener on the grid rather than per-block: the tree is rebuilt on every state
+ * change, so per-node handlers would be re-bound constantly.
  */
-function attachEditing(grid, columns, axis, { layout, onCreate, onOpen, onDrag, onDragEnd }) {
-  /** Maps a pointer position to a snapped {day, minutes}. */
+function attachEditing(grid, columns, axis, { onCreate, onOpen }) {
+  /** Maps a tap position to a snapped {day, minutes}. */
   const slotAt = (clientX, clientY) => {
     let chosen = columns[0]
     let bestDistance = Infinity
@@ -117,96 +115,17 @@ function attachEditing(grid, columns, axis, { layout, onCreate, onOpen, onDrag, 
     return { day: chosen.day, minutes: snapMinutes(minutesAt(axis, fraction)) }
   }
 
-  const findPlaced = (id) => {
-    for (const key of Object.keys(layout.days)) {
-      const hit = layout.days[key].find((p) => p.event.id === id)
-      if (hit) return hit
-    }
-    return null
-  }
+  grid.addEventListener('click', (e) => {
+    const block = e.target.closest ? e.target.closest('.event') : null
 
-  grid.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return
-
-    const blockNode = e.target.closest ? e.target.closest('.event') : null
-    const isGrip = e.target.dataset && e.target.dataset.grip === 'resize'
-    const origin = slotAt(e.clientX, e.clientY)
-
-    // --- empty space: create on release, so a stray drag does not spawn events ----
-    if (!blockNode) {
-      const startX = e.clientX
-      const startY = e.clientY
-      const onUp = (up) => {
-        grid.removeEventListener('pointerup', onUp)
-        if (Math.hypot(up.clientX - startX, up.clientY - startY) <= DRAG_THRESHOLD_PX) {
-          // slotAt speaks `minutes`; the onCreate contract is `startMin`. Passing
-          // `origin` straight through silently produced NaN start times.
-          onCreate?.({ day: origin.day, startMin: origin.minutes })
-        }
-      }
-      grid.addEventListener('pointerup', onUp)
+    if (block) {
+      onOpen?.(block.dataset.eventId)
       return
     }
 
-    const id = blockNode.dataset.eventId
-    const placed = findPlaced(id)
-    if (!placed) return
-
-    const mode = isGrip ? 'resize' : 'move'
-    // Grabbing the middle of a block must not teleport its top to the pointer.
-    const grabOffset = origin.minutes - placed.startMin
-
-    let moved = false
-    if (grid.setPointerCapture) grid.setPointerCapture(e.pointerId)
-
-    const draftAt = (clientX, clientY) => {
-      const at = slotAt(clientX, clientY)
-      if (mode === 'resize') {
-        return {
-          id,
-          mode,
-          day: placed.event.day,
-          startMin: placed.startMin,
-          durationMin: Math.max(MIN_DURATION, at.minutes - placed.startMin),
-        }
-      }
-      return {
-        id,
-        mode,
-        day: at.day,
-        startMin: at.minutes - grabOffset,
-        durationMin: placed.endMin - placed.startMin,
-      }
-    }
-
-    let frame = 0
-    const onMove = (move) => {
-      if (
-        !moved &&
-        Math.hypot(move.clientX - e.clientX, move.clientY - e.clientY) <= DRAG_THRESHOLD_PX
-      ) {
-        return
-      }
-      moved = true
-      // Throttle to the frame: a re-render per pointermove would be wasted work.
-      if (frame) return
-      frame = requestAnimationFrame(() => {
-        frame = 0
-        onDrag?.(draftAt(move.clientX, move.clientY))
-      })
-    }
-
-    const onUp = (up) => {
-      grid.removeEventListener('pointermove', onMove)
-      grid.removeEventListener('pointerup', onUp)
-      grid.removeEventListener('pointercancel', onUp)
-      if (frame) cancelAnimationFrame(frame)
-      if (moved) onDragEnd?.(draftAt(up.clientX, up.clientY))
-      else onOpen?.(id)
-    }
-
-    grid.addEventListener('pointermove', onMove)
-    grid.addEventListener('pointerup', onUp)
-    grid.addEventListener('pointercancel', onUp)
+    // slotAt speaks `minutes`; the onCreate contract is `startMin`. Passing the
+    // internal shape straight through once produced NaN start times.
+    const origin = slotAt(e.clientX, e.clientY)
+    onCreate?.({ day: origin.day, startMin: origin.minutes })
   })
 }

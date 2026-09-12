@@ -265,38 +265,16 @@ body {
 
 /* ==================================================== editing affordances ==== */
 
+/*
+ * A tap opens a dialog. Nothing on the grid is dragged or resized — removed in 1.2,
+ * because a press that drifts a few pixels is the norm on a tablet, not the exception.
+ *
+ * Note what went with it: `touch-action: none`, which the drag handlers needed and
+ * which disabled ordinary scrolling and pinch-zoom across the whole grid whenever
+ * editing was on. Its absence is most of the improvement here.
+ */
 .week--editing .day { cursor: copy; }
-.week--editing .event { cursor: grab; }
-.week--editing .event--dragging { cursor: grabbing; opacity: 0.9; z-index: 4; }
-
-/* Resize grip: invisible until hover, so a calm view stays calm. */
-.event__grip {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 8px;
-  cursor: ns-resize;
-  touch-action: none;
-}
-.event__grip::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 2px;
-  width: 1.4rem;
-  height: 2px;
-  margin-left: -0.7rem;
-  border-radius: 2px;
-  background: currentColor;
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-.event:hover .event__grip::after { opacity: 0.35; }
-
-/* Pointer events must not be stolen by the browser's own scroll/zoom gestures. */
-.week--editing .day,
-.week--editing .event { touch-action: none; }
+.week--editing .event { cursor: pointer; }
 
 /* A letter label rather than an icon: fixed box so D and W do not shift the toolbar. */
 .app__button--glyph {

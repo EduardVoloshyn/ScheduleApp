@@ -47,9 +47,10 @@ test('the now-line is omitted when the clock is outside the axis', () => {
   eq(weekView({ layout, today: 3, nowMin: 3 * 60 }).findAll('day__now').length, 0)
 })
 
-test('resize grips exist only while editing', () => {
+test('no resize grips exist in either mode', () => {
+  // Removed in 1.2 with the drag interactions. Editing is dialog-only.
   eq(weekView({ layout, today: 1, nowMin: null, editing: false }).findAll('event__grip').length, 0)
-  eq(weekView({ layout, today: 1, nowMin: null, editing: true }).findAll('event__grip').length, 18)
+  eq(weekView({ layout, today: 1, nowMin: null, editing: true }).findAll('event__grip').length, 0)
 })
 
 test('a block carries its event id, so pointer handling can find it', () => {
@@ -206,8 +207,7 @@ test('tapping empty space reports a numeric startMin, not undefined', () => {
   })
 
   const target = { closest: () => null, dataset: {} }
-  grid.dispatch('pointerdown', { pointerType: 'mouse', button: 0, clientX: 50, clientY: 300, target })
-  grid.dispatch('pointerup', { clientX: 50, clientY: 300, target })
+  grid.dispatch('click', { clientX: 50, clientY: 300, target })
 
   ok(received, 'onCreate never fired')
   ok(Number.isFinite(received.startMin), `startMin was ${received.startMin}`)
@@ -219,16 +219,15 @@ test('tapping empty space reports a numeric startMin, not undefined', () => {
   eq(received.day, 1)
 })
 
-test('a drag past the threshold creates nothing', () => {
+test('a click on empty space creates exactly once', () => {
   let created = 0
   const grid = weekView({
     layout, today: 1, nowMin: null, editing: true,
     onCreate: () => { created += 1 },
   })
   const target = { closest: () => null, dataset: {} }
-  grid.dispatch('pointerdown', { pointerType: 'mouse', button: 0, clientX: 50, clientY: 300, target })
-  grid.dispatch('pointerup', { clientX: 50, clientY: 380, target })
-  eq(created, 0, 'a drag on empty space spawned an event')
+  grid.dispatch('click', { clientX: 50, clientY: 300, target })
+  eq(created, 1)
 })
 
 test('the editor never shows an unusable time field', () => {
@@ -334,8 +333,7 @@ test('a tap on empty space creates nothing when editing is off', () => {
     onCreate: () => { created += 1 },
   })
   const target = { closest: () => null, dataset: {} }
-  grid.dispatch('pointerdown', { pointerType: 'mouse', button: 0, clientX: 50, clientY: 300, target })
-  grid.dispatch('pointerup', { clientX: 50, clientY: 300, target })
+  grid.dispatch('click', { clientX: 50, clientY: 300, target })
   eq(created, 0, 'view-only mode created an event')
 })
 
@@ -347,24 +345,20 @@ test('a tap on an event opens nothing when editing is off', () => {
   })
   const block = grid.findAll('event')[0]
   const target = { closest: () => block, dataset: {} }
-  grid.dispatch('pointerdown', { pointerType: 'mouse', button: 0, clientX: 50, clientY: 300, target })
-  grid.dispatch('pointerup', { clientX: 50, clientY: 300, target })
+  grid.dispatch('click', { clientX: 50, clientY: 300, target })
   eq(opened, 0, 'view-only mode opened the editor')
 })
 
-test('a drag moves nothing when editing is off', () => {
-  let dragged = 0
+test('tapping a block opens it once editing is on', () => {
+  let opened = null
   const grid = weekView({
-    layout, today: 1, nowMin: null, editing: false,
-    onDrag: () => { dragged += 1 },
-    onDragEnd: () => { dragged += 1 },
+    layout, today: 1, nowMin: null, editing: true,
+    onOpen: (id) => { opened = id },
   })
   const block = grid.findAll('event')[0]
   const target = { closest: () => block, dataset: {} }
-  grid.dispatch('pointerdown', { pointerType: 'mouse', button: 0, clientX: 50, clientY: 300, target })
-  grid.dispatch('pointermove', { clientX: 50, clientY: 400, target })
-  grid.dispatch('pointerup', { clientX: 50, clientY: 400, target })
-  eq(dragged, 0, 'view-only mode moved an event')
+  grid.dispatch('click', { clientX: 50, clientY: 300, target })
+  eq(opened, block.dataset.eventId)
 })
 
 test('the same taps do work once editing is on', () => {
@@ -374,8 +368,7 @@ test('the same taps do work once editing is on', () => {
     onCreate: () => { created += 1 },
   })
   const target = { closest: () => null, dataset: {} }
-  grid.dispatch('pointerdown', { pointerType: 'mouse', button: 0, clientX: 50, clientY: 300, target })
-  grid.dispatch('pointerup', { clientX: 50, clientY: 300, target })
+  grid.dispatch('click', { clientX: 50, clientY: 300, target })
   eq(created, 1, 'editing mode failed to create')
 })
 
@@ -387,8 +380,7 @@ test('the day view is equally inert when editing is off', () => {
     onOpen: () => { touched += 1 },
   })
   const target = { closest: () => null, dataset: {} }
-  grid.dispatch('pointerdown', { pointerType: 'mouse', button: 0, clientX: 50, clientY: 300, target })
-  grid.dispatch('pointerup', { clientX: 50, clientY: 300, target })
+  grid.dispatch('click', { clientX: 50, clientY: 300, target })
   eq(touched, 0)
   eq(grid.findAll('event__grip').length, 0)
 })

@@ -5,8 +5,12 @@ import { firstIcon } from './icons.js'
  * Pure event mutations. No DOM, no network, no clock — every function takes the event
  * list and returns a new one, so the whole editing model is testable in isolation.
  *
- * `duration_min` stays canonical throughout (CLAUDE.md rule 6): moving an event keeps
- * its length, and only an explicit resize changes it.
+ * `duration_min` stays canonical throughout: changing an event's start never changes
+ * its length, only an explicit duration edit does.
+ *
+ * `moveEvent` and `resizeEvent` lived here until 1.2 and were deleted with the drag
+ * interactions that were their only caller. `updateEvent` covers day, start and
+ * duration from the editor, which is now the single way any of them change.
  */
 
 export const MIN_DURATION = 5
@@ -74,30 +78,6 @@ export function findEvent(events, id) {
 
 function replace(events, id, fn) {
   return events.map((e) => (e.id === id ? fn(e) : e))
-}
-
-/**
- * Moves an event, preserving its length. This is the rule that makes dragging feel
- * right — a lesson stays 45 minutes long wherever you put it.
- */
-export function moveEvent(events, id, { day, startMin }) {
-  return replace(events, id, (e) => {
-    const fitted = fitWithinDay(startMin, e.duration_min)
-    return {
-      ...e,
-      day: clamp(Math.round(day ?? e.day), 1, 7),
-      start: formatTime(fitted.startMin),
-      duration_min: fitted.durationMin,
-    }
-  })
-}
-
-/** Resizes from the bottom edge: the start is fixed, the length changes. */
-export function resizeEvent(events, id, durationMin) {
-  return replace(events, id, (e) => {
-    const fitted = fitWithinDay(parseTime(e.start), durationMin)
-    return { ...e, start: formatTime(fitted.startMin), duration_min: fitted.durationMin }
-  })
 }
 
 /** Field edits from the detail sheet. An unknown colour is ignored, never stored. */

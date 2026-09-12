@@ -12,9 +12,7 @@ import {
   fitWithinDay,
   findEvent,
   isUsableEvent,
-  moveEvent,
   partitionUsable,
-  resizeEvent,
   templateFromEvent,
   updateEvent,
 } from '../src/model/schedule.js'
@@ -94,51 +92,18 @@ test('createEvent clamps the day', () => {
   eq(createEvent({ day: 12, startMin: 600, durationMin: 60 }).day, 7)
 })
 
-/* ------------------------------------------------------------------ move ---- */
+/* ------------------------------------------------------------- shared data ---- */
 
 const base = [
   createEvent({ id: 'a', day: 2, startMin: parseTime('19:00'), durationMin: 90, title: 'ФТФ' }),
   createEvent({ id: 'b', day: 6, startMin: parseTime('16:40'), durationMin: 60, title: 'Вектор' }),
 ]
 
-test('moving an event preserves its length', () => {
-  const moved = moveEvent(base, 'a', { day: 4, startMin: parseTime('09:15') })
-  const e = findEvent(moved, 'a')
-  eq(e.day, 4)
-  eq(e.start, '09:15')
-  eq(e.duration_min, 90, 'length changed on a move')
-})
-
-test('moving off the bottom pins rather than truncates', () => {
-  const moved = moveEvent(base, 'a', { day: 2, startMin: parseTime('23:30') })
-  const e = findEvent(moved, 'a')
-  eq(e.start, '22:30')
-  eq(e.duration_min, 90, 'length changed when pinned')
-})
-
-test('moving leaves other events alone', () => {
-  const moved = moveEvent(base, 'a', { day: 1, startMin: 600 })
-  eq(findEvent(moved, 'b'), findEvent(base, 'b'))
-})
-
-test('a move with no day given keeps the day', () => {
-  eq(findEvent(moveEvent(base, 'b', { startMin: 600 }), 'b').day, 6)
-})
-
-/* ---------------------------------------------------------------- resize ---- */
-
-test('resizing keeps the start and changes the length', () => {
-  const e = findEvent(resizeEvent(base, 'a', 120), 'a')
-  eq(e.start, '19:00')
-  eq(e.duration_min, 120)
-})
-
-test('resizing cannot go below the floor or past midnight', () => {
-  eq(findEvent(resizeEvent(base, 'a', 1), 'a').duration_min, MIN_DURATION)
-  const late = [createEvent({ id: 'c', day: 1, startMin: parseTime('23:00'), durationMin: 30 })]
-  const grown = findEvent(resizeEvent(late, 'c', 600), 'c')
-  ok(parseTime(grown.start) + grown.duration_min <= 24 * 60)
-})
+/*
+ * moveEvent and resizeEvent were deleted in 1.2 along with the drag interactions that
+ * were their only caller. Their behaviour — a start change never altering the length —
+ * now lives in updateEvent and is covered below.
+ */
 
 /* ---------------------------------------------------------------- update ---- */
 
@@ -222,9 +187,7 @@ test('a template captured from an event keeps title, colour and length', () => {
 
 test('no mutation touches the original array', () => {
   const before = JSON.stringify(base)
-  moveEvent(base, 'a', { day: 5, startMin: 100 })
-  resizeEvent(base, 'a', 200)
-  updateEvent(base, 'a', { title: 'x' })
+  updateEvent(base, 'a', { title: 'x', start: '08:00', duration_min: 200, day: 5 })
   deleteEvent(base, 'a')
   duplicateEvent(base, 'a', { day: 1, startMin: 100 })
   eq(JSON.stringify(base), before, 'a mutation leaked into the source list')
@@ -384,4 +347,29 @@ test('a credential stored as a full Apps Script URL migrates to an id', () => {
     parseDeploymentId('https://script.google.com/macros/s/AKfyREAL/exec'),
     'AKfyREAL',
   )
+})
+
+test('changing the start never changes the length', () => {
+  // The rule that made dragging feel right, now enforced through the editor: editing a
+  // start time leaves duration alone unless duration is edited too.
+  const moved = findEvent(updateEvent(base, 'a', { start: '09:15' }), 'a')
+  eq(moved.start, '09:15')
+  eq(moved.duration_min, 90, 'length changed when only the start was edited')
+})
+
+test('an edit cannot push an event past midnight', () => {
+  const late = findEvent(updateEvent(base, 'a', { start: '23:30' }), 'a')
+  ok(parseTime(late.start) + late.duration_min <= 24 * 60, `${late.start} + ${late.duration_min}`)
+  eq(late.duration_min, 90, 'length was truncated instead of the start being pinned')
+})
+
+test('duration edits are clamped to the floor', () => {
+  eq(findEvent(updateEvent(base, 'a', { duration_min: 1 }), 'a').duration_min, MIN_DURATION)
+})
+
+test('editing the day leaves everything else alone', () => {
+  const e = findEvent(updateEvent(base, 'a', { day: 4 }), 'a')
+  eq(e.day, 4)
+  eq(e.start, '19:00')
+  eq(e.duration_min, 90)
 })

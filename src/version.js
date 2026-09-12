@@ -9,5 +9,5 @@
  * quietly asserts something false about what you are running.
  */
 
-export const VERSION = '1.1'
+export const VERSION = '1.2'
 export const RELEASED = '2026-09-11'

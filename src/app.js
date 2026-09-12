@@ -7,9 +7,7 @@ import {
   duplicateEvent,
   eventFromTemplate,
   findEvent,
-  moveEvent,
   partitionUsable,
-  resizeEvent,
   newId,
   templateFromEvent,
   updateEvent,
@@ -54,7 +52,7 @@ import { weekView } from './ui/week-view.js'
  * diffing or a framework (ADR-0006).
  */
 
-/** Writes are batched: a drag produces many mutations, and each save costs ~4s. */
+/** Writes are batched: a burst of edits should cost one save, not one each. */
 const SAVE_DEBOUNCE_MS = 1200
 
 const state = {
@@ -64,8 +62,6 @@ const state = {
   prefs: withDefaults(loadPrefs()),
   /** @type {{ status: 'idle'|'loading'|'saving'|'ok'|'error', message?: string, code?: string }} */
   sync: { status: 'idle' },
-  /** Live drag preview; never committed until the pointer is released. */
-  drag: null,
   /** A template armed from the library, placed by the next tap on the grid. */
   armedTemplate: null,
   /**
@@ -503,14 +499,12 @@ function statusText() {
 
 /* ------------------------------------------------------------------ render ---- */
 
-/** Applies the in-flight drag to a copy of the list, so the preview is live. */
+/**
+ * What the grid draws. Kept as a function because the draft event has to appear while
+ * the editor is open, and nothing else adds to the saved list.
+ */
 function eventsWithDraft() {
-  const events = displayEvents()
-  if (!state.drag) return events
-  const { id, mode, day, startMin, durationMin } = state.drag
-  return mode === 'resize'
-    ? resizeEvent(events, id, durationMin)
-    : moveEvent(events, id, { day, startMin })
+  return displayEvents()
 }
 
 function applyTheme(prefs) {
@@ -587,19 +581,8 @@ function render() {
     today: state.today,
     nowMin: state.nowMin,
     editing: editable,
-    dragId: state.drag?.id ?? null,
     onCreate: onCreateAt,
     onOpen: (id) => openEditor(id),
-    onDrag: (draft) => setState({ drag: draft }),
-    onDragEnd: (draft) => {
-      const events = currentEvents()
-      const next =
-        draft.mode === 'resize'
-          ? resizeEvent(events, draft.id, draft.durationMin)
-          : moveEvent(events, draft.id, { day: draft.day, startMin: draft.startMin })
-      state.drag = null
-      applyEvents(next)
-    },
   }
 
   if (state.prefs.view === 'day') append(app, dayNav())
@@ -625,7 +608,7 @@ function setEditing(enabled) {
   setState(
     enabled
       ? { prefs }
-      : { prefs, armedTemplate: null, draftEvent: null, drag: null },
+      : { prefs, armedTemplate: null, draftEvent: null },
   )
 }
 
