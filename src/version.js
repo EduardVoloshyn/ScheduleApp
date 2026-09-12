@@ -5,9 +5,13 @@
  * deploy that touches a precached file — often several times for one release. This is
  * the number a person sees and quotes back when something is wrong.
  *
- * Bump RELEASED with VERSION. A version with a stale date is worse than no date: it
- * quietly asserts something false about what you are running.
+ * Bump RELEASED with VERSION, to the date the bump is actually made. Check the clock
+ * rather than reusing a date from earlier in the conversation — 1.2 shipped stamped
+ * with the previous day because of exactly that.
+ *
+ * A version carrying a stale date is worse than no date: it quietly asserts something
+ * false about what you are running.
  */
 
 export const VERSION = '1.2'
-export const RELEASED = '2026-09-11'
+export const RELEASED = '2026-09-12'

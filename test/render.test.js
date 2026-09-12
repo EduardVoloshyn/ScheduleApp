@@ -581,3 +581,11 @@ test('the about panel mentions the reset escape hatch', () => {
   // read a document that lives on a laptop.
   ok(aboutPanel({}).textContent.includes('?reset'))
 })
+
+test('the release date is not in the future', () => {
+  // Catches the other half of the stale-date problem: a typo like 2027 would sail
+  // through the format check and claim the app is newer than it is.
+  const released = Date.parse(RELEASED)
+  const tomorrow = Date.now() + 24 * 60 * 60 * 1000
+  ok(released <= tomorrow, `RELEASED is ${RELEASED}, which is ahead of the clock`)
+})
