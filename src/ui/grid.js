@@ -1,5 +1,5 @@
 import { DAY_NAMES } from '../layout/layout.js'
-import { gridlines, minutesAt, ratio, snapMinutes } from '../layout/index.js'
+import { clusterPlaced, gridlines, minutesAt, ratio, snapMinutes } from '../layout/index.js'
 import { formatTime } from '../layout/time.js'
 import { append, el } from './dom.js'
 import { eventBlock } from './event-block.js'
@@ -70,8 +70,10 @@ export function scheduleGrid(props) {
       append(column, el('div', 'day__now', { top: `${ratio(axis, nowMin) * 100}%` }))
     }
 
-    for (const placed of layout.days[day]) {
-      append(column, eventBlock(placed, { editing }))
+    for (const cluster of clusterPlaced(layout.days[day], axis)) {
+      append(column, cluster.items.length === 1
+        ? eventBlock(cluster.items[0], { editing })
+        : clusterList(cluster, editing))
     }
 
     append(grid, column)
@@ -80,6 +82,34 @@ export function scheduleGrid(props) {
   if (editing) attachEditing(grid, columns, axis, props)
 
   return grid
+}
+
+/**
+ * Overlapping events, drawn as a stacked list across the span they share.
+ *
+ * Every row is full width, so a name and its time always fit — which side-by-side
+ * columns could not manage once three events collided. What it costs: inside a cluster
+ * the rows are equal height rather than proportional to duration. The cluster's own top
+ * and bottom still mark real times, so the shape of the week is unchanged.
+ *
+ * A `min-height` in CSS keeps the rows legible when the shared span is short; the group
+ * then extends a little past its true end, which is the deliberate trade — being
+ * readable matters more here than the last few pixels of precision.
+ *
+ * @param {import('../layout/layout.js').Cluster} cluster
+ * @param {boolean} editing
+ */
+function clusterList(cluster, editing) {
+  const box = el('div', 'cluster', {
+    top: `${cluster.top * 100}%`,
+    height: `${cluster.height * 100}%`,
+    '--cluster-rows': String(cluster.items.length),
+  })
+
+  for (const item of cluster.items) {
+    append(box, eventBlock(item, { editing, row: true }))
+  }
+  return box
 }
 
 /**

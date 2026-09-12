@@ -158,3 +158,51 @@ export function layoutWeek(events, options = {}) {
 
   return { axis, days, invalid }
 }
+
+/**
+ * @typedef {Object} Cluster
+ * @property {PlacedEvent[]} items   one or more events sharing a span
+ * @property {number} startMin       earliest start in the cluster
+ * @property {number} endMin         latest end in the cluster
+ * @property {number} top            fraction of the axis, as for a PlacedEvent
+ * @property {number} height         fraction of the axis
+ */
+
+/**
+ * Groups a day's placed events into runs that overlap.
+ *
+ * Overlapping events are drawn as a stacked list rather than side by side, so every
+ * name and time stays readable at full width — side-by-side columns ran out of room for
+ * the time once three events collided, and a cascade always clipped the card behind.
+ *
+ * The grouping is transitive, matching `assignColumns`: if A overlaps B and B overlaps
+ * C, all three are one cluster even where A and C never touch. Anything else would draw
+ * two groups on top of each other.
+ *
+ * @param {PlacedEvent[]} placed sorted by start, as `layoutDay` returns
+ * @param {import('./axis.js').Axis} axis
+ * @returns {Cluster[]}
+ */
+export function clusterPlaced(placed, axis) {
+  const clusters = []
+
+  for (const item of placed) {
+    const current = clusters[clusters.length - 1]
+
+    // `<` not `<=`: an event starting exactly as another ends is adjacent, not
+    // overlapping — the Неділя case, which must stay two separate blocks.
+    if (current && item.startMin < current.endMin) {
+      current.items.push(item)
+      current.endMin = Math.max(current.endMin, item.endMin)
+    } else {
+      clusters.push({ items: [item], startMin: item.startMin, endMin: item.endMin })
+    }
+  }
+
+  for (const cluster of clusters) {
+    cluster.top = ratio(axis, cluster.startMin)
+    cluster.height = ratioOfDuration(axis, cluster.endMin - cluster.startMin)
+  }
+
+  return clusters
+}

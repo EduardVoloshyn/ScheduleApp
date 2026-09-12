@@ -589,3 +589,56 @@ test('the release date is not in the future', () => {
   const tomorrow = Date.now() + 24 * 60 * 60 * 1000
   ok(released <= tomorrow, `RELEASED is ${RELEASED}, which is ahead of the clock`)
 })
+
+/* --------------------------------------------------------- cluster rendering ---- */
+
+test('Saturday renders one cluster box plus a lone block', () => {
+  const node = weekView({ layout, today: 1, nowMin: null })
+  const saturday = node.findAll('day')[5]
+  eq(saturday.findAll('cluster').length, 1, 'no cluster drawn for the overlap')
+  // Three events on Субота: two inside the cluster, Японська on its own.
+  eq(saturday.findAll('event').length, 3)
+})
+
+test('every event in a cluster keeps its name and its full time', () => {
+  // The whole reason for this treatment: side-by-side ran out of room for the range.
+  const rows = weekView({ layout, today: 1, nowMin: null }).findAll('day')[5].findAll('event--row')
+  eq(rows.length, 2)
+  eq(rows.map((r) => r.find('event__title').textContent), ['Вектор', 'Еврика'])
+  eq(rows.map((r) => r.find('event__time').textContent), ['16:40–17:40', '17:00–18:00'])
+})
+
+test('a cluster row is still tappable, so it can be opened', () => {
+  const rows = weekView({ layout, today: 1, nowMin: null }).findAll('day')[5].findAll('event--row')
+  ok(rows.every((r) => r.dataset.eventId), 'a row lost its event id')
+})
+
+test('tapping a row inside a cluster opens that event', () => {
+  let opened = null
+  const grid = weekView({
+    layout, today: 1, nowMin: null, editing: true,
+    onOpen: (id) => { opened = id },
+  })
+  const row = grid.findAll('day')[5].findAll('event--row')[1]
+  grid.dispatch('click', { clientX: 50, clientY: 300, target: { closest: () => row, dataset: {} } })
+  eq(opened, row.dataset.eventId)
+})
+
+test('days with no overlaps draw no cluster boxes', () => {
+  const node = weekView({ layout, today: 1, nowMin: null })
+  // Неділя's events touch but never overlap — four separate blocks, no group.
+  const sunday = node.findAll('day')[6]
+  eq(sunday.findAll('cluster').length, 0)
+  eq(sunday.findAll('event').length, 4)
+})
+
+test('the cluster carries its row count, so CSS can reserve height', () => {
+  const box = weekView({ layout, today: 1, nowMin: null }).findAll('cluster')[0]
+  eq(box.styleProps['--cluster-rows'], '2')
+})
+
+test('the day view clusters too', () => {
+  const node = dayView({ layout, day: 6, today: 6, nowMin: null })
+  eq(node.findAll('cluster').length, 1)
+  eq(node.findAll('event--row').length, 2)
+})

@@ -5,6 +5,7 @@ import {
   fitAxis,
   formatTime,
   gridlines,
+  clusterPlaced,
   hasOverlap,
   HOUR,
   layoutWeek,
@@ -319,4 +320,79 @@ test('every block still sits inside the axis after the lead-in', () => {
   for (const placed of Object.values(layoutWeek(SEED_EVENTS).days).flat()) {
     ok(placed.top >= 0 && placed.top + placed.height <= 1 + 1e-6, placed.event.title)
   }
+})
+
+/* ---------------------------------------------------------------- clusters ---- */
+
+const clusterFor = (day) => {
+  const { placed, axis } = dayPlaced(day)
+  return { placed: clusterPlaced(placed, axis), axis }
+}
+
+const dayPlaced = (day) => {
+  const layout = layoutWeek(SEED_EVENTS)
+  return { placed: layout.days[day], axis: layout.axis }
+}
+
+test('non-overlapping events each form their own cluster', () => {
+  const { placed, axis } = dayPlaced(4) // Четвер: 11:00, 12:30, 19:00 — no overlaps
+  const clusters = clusterPlaced(placed, axis)
+  eq(clusters.length, 3)
+  ok(clusters.every((c) => c.items.length === 1))
+})
+
+test('the Saturday pair becomes one cluster of two', () => {
+  const { placed, axis } = clusterFor(6)
+  eq(placed.length, 2, 'Субота should cluster into one group plus a lone event')
+  const overlap = placed.find((c) => c.items.length > 1)
+  eq(overlap.items.map((i) => i.event.title), ['Вектор', 'Еврика'])
+  eq(formatTime(overlap.startMin), '16:40')
+  eq(formatTime(overlap.endMin), '18:00', 'the cluster must span to the later end')
+})
+
+test('Sunday stays separate — its events touch but never overlap', () => {
+  // Японська ends 17:00 and Історія starts 17:00. One cluster each, or the list
+  // treatment would group two events that never actually collide.
+  const { placed, axis } = dayPlaced(7)
+  const clusters = clusterPlaced(placed, axis)
+  eq(clusters.length, 4)
+  ok(clusters.every((c) => c.items.length === 1))
+})
+
+test('clustering is transitive', () => {
+  // A overlaps B, B overlaps C, A and C never touch — still one group, or two would
+  // be drawn on top of each other.
+  const layout = layoutWeek([
+    { id: 'a', day: 1, start: '10:00', duration_min: 60, title: 'A', colour: 'slate' },
+    { id: 'b', day: 1, start: '10:30', duration_min: 60, title: 'B', colour: 'slate' },
+    { id: 'c', day: 1, start: '11:15', duration_min: 60, title: 'C', colour: 'slate' },
+  ])
+  const clusters = clusterPlaced(layout.days[1], layout.axis)
+  eq(clusters.length, 1)
+  eq(clusters[0].items.length, 3)
+  eq(formatTime(clusters[0].endMin), '12:15')
+})
+
+test('a cluster spans from its earliest start to its latest end', () => {
+  // A long event wholly containing a short one: the cluster must end with the long
+  // one, not with whichever happened to be last in the list.
+  const layout = layoutWeek([
+    { id: 'long', day: 1, start: '10:00', duration_min: 180, title: 'Long', colour: 'slate' },
+    { id: 'short', day: 1, start: '10:30', duration_min: 30, title: 'Short', colour: 'slate' },
+  ])
+  const c = clusterPlaced(layout.days[1], layout.axis)[0]
+  eq(c.items.length, 2)
+  eq(formatTime(c.endMin), '13:00')
+})
+
+test('cluster geometry matches the axis', () => {
+  const { placed, axis } = dayPlaced(6)
+  for (const c of clusterPlaced(placed, axis)) {
+    ok(c.top >= 0 && c.top + c.height <= 1 + 1e-6, `${formatTime(c.startMin)} outside the axis`)
+  }
+})
+
+test('an empty day produces no clusters', () => {
+  const layout = layoutWeek([])
+  eq(clusterPlaced(layout.days[1], layout.axis), [])
 })

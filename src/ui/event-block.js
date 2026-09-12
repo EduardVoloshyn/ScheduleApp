@@ -9,7 +9,9 @@ const SHOW_NOTE_ABOVE_MIN = 75
 
 /**
  * @param {import('../layout/layout.js').PlacedEvent} placed
- * @param {{ editing?: boolean }} [options]
+ * @param {{ editing?: boolean, row?: boolean }} [options]
+ *   `row` renders it for a cluster list: laid out by flex rather than positioned, so
+ *   the caller decides its height.
  * @returns {HTMLElement}
  */
 export function eventBlock(placed, options = {}) {
@@ -23,16 +25,23 @@ export function eventBlock(placed, options = {}) {
   // A gap between side-by-side blocks, taken from the right so left edges stay aligned.
   const inset = placed.columns > 1 ? 2 : 0
 
-  const classes = ['event', `event--${colour}`, options.editing ? 'event--editable' : '']
+  const classes = [
+    'event',
+    `event--${colour}`,
+    options.editing ? 'event--editable' : '',
+    options.row ? 'event--row' : '',
+  ]
     .filter(Boolean)
     .join(' ')
 
-  const node = el('div', classes, {
-    top: `${placed.top * 100}%`,
-    height: `${placed.height * 100}%`,
-    left: `calc(${placed.left * 100}% + 1px)`,
-    width: `calc(${placed.width * 100}% - ${inset + 2}px)`,
-  })
+  const node = options.row
+    ? el('div', classes)
+    : el('div', classes, {
+        top: `${placed.top * 100}%`,
+        height: `${placed.height * 100}%`,
+        left: `calc(${placed.left * 100}% + 1px)`,
+        width: `calc(${placed.width * 100}% - ${inset + 2}px)`,
+      })
   node.dataset.eventId = event.id
   node.title = `${formatTime(placed.startMin)}–${formatTime(placed.endMin)}  ${event.title}`
 
