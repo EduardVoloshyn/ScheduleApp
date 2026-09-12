@@ -13,5 +13,5 @@
  * false about what you are running.
  */
 
-export const VERSION = '1.2'
+export const VERSION = '1.3'
 export const RELEASED = '2026-09-12'
