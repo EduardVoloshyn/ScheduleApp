@@ -715,9 +715,11 @@ body {
   padding: 2px;
   box-sizing: border-box;
   min-height: calc(var(--cluster-rows, 2) * 2.4rem);
-  /* A hairline, dashed, marking the real span the group covers — the one thing the
-     equal-height rows stop showing on their own. */
-  border: 1px dashed var(--rule-strong);
+  /* Marks the real span the group covers — the one thing the equal-height rows stop
+     showing on their own. Dashed so it never reads as another event's own edge, but at
+     2px in --ink-quiet rather than a hairline: at --rule-strong it weighed the same as
+     a gridline and disappeared into the column. */
+  border: 2px dashed var(--ink-quiet);
   border-radius: var(--radius);
   z-index: 1;
 }
