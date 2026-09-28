@@ -1,3 +1,4 @@
+import { UNCATEGORISED } from '../model/categories.js'
 import { append, el } from './dom.js'
 
 /**
@@ -8,7 +9,9 @@ import { append, el } from './dom.js'
  * devices should inherit.
  *
  * Renders nothing at all when the Sheet has no categories, so the bar does not occupy
- * space until the owner has filled the tab in.
+ * space until the owner has filled the tab in. That also settles the uncategorised
+ * toggle for that case: with no categories every event is uncategorised, and a switch
+ * that blanks the whole schedule is not worth offering.
  *
  * @param {{ categories: import('../model/categories.js').Category[],
  *           hidden: Set<string>,
@@ -23,37 +26,41 @@ export function categoryBar({ categories, hidden, counts, uncategorised, onToggl
 
   const bar = el('div', 'cats')
 
-  for (const category of categories) {
-    const off = hidden.has(category.id)
-    const count = counts[category.id] ?? 0
-
-    const chip = el('button', `cat${off ? ' cat--off' : ''}`)
-    chip.type = 'button'
-    chip.setAttribute('aria-pressed', String(!off))
-    chip.title = off ? `Показати «${category.name}»` : `Сховати «${category.name}»`
-    chip.addEventListener('click', () => onToggle(category.id))
+  /** One builder for every toggle, so the uncategorised one cannot drift from the rest. */
+  const chip = (id, name, count, extraClass = '') => {
+    const off = hidden.has(id)
+    const node = el('button', `cat${extraClass}${off ? ' cat--off' : ''}`)
+    node.type = 'button'
+    node.setAttribute('aria-pressed', String(!off))
+    node.title = off ? `Показати «${name}»` : `Сховати «${name}»`
+    node.addEventListener('click', () => onToggle(id))
 
     append(
-      chip,
-      el('span', 'cat__name', undefined, category.name),
+      node,
+      el('span', 'cat__name', undefined, name),
       el('span', 'cat__count', undefined, String(count)),
     )
-    append(bar, chip)
+    return node
   }
 
-  // Only meaningful while something is hidden, so it stays out of the way otherwise.
+  for (const category of categories) {
+    append(bar, chip(category.id, category.name, counts[category.id] ?? 0))
+  }
+
+  // A real toggle rather than the plain count this used to be. It matters most right
+  // after the migration, when nothing is categorised yet and this is the only way to
+  // see what the categorised part of the week looks like on its own.
+  if (uncategorised > 0) {
+    append(bar, chip(UNCATEGORISED, 'Без категорії', uncategorised, ' cat--none'))
+  }
+
+  // Last, and only while something is hidden: it is a reset, not a filter.
   if (hidden.size > 0) {
     const all = el('button', 'cat cat--all', undefined, 'Усі')
     all.type = 'button'
     all.title = 'Показати всі категорії'
     all.addEventListener('click', onShowAll)
     append(bar, all)
-  }
-
-  // Worth surfacing: right after the migration everything is uncategorised, and these
-  // events stay visible whatever the toggles say. Without this the counts look wrong.
-  if (uncategorised > 0) {
-    append(bar, el('span', 'cats__note', undefined, `+${uncategorised} без категорії`))
   }
 
   return bar

@@ -12,6 +12,20 @@
  */
 
 /**
+ * The filter id for events carrying no category, and for those naming a category no
+ * longer in the tab.
+ *
+ * These used to be unfilterable on purpose: hiding them would have made events vanish
+ * with no toggle able to bring them back, which is indistinguishable from data loss.
+ * They now have their own toggle in the bar, which is exactly what that rule was
+ * missing, so the bucket became an ordinary filter target and needed an id.
+ *
+ * It must never collide with a real id from the Sheet, so `parseCategories` drops any
+ * row claiming it.
+ */
+export const UNCATEGORISED = '__none__'
+
+/**
  * @typedef {Object} Category
  * @property {string} id
  * @property {string} name
@@ -30,7 +44,10 @@ export function parseCategories(rows) {
 
   for (const row of rows ?? []) {
     const id = String(row?.id ?? '').trim()
-    if (!id || seen.has(id)) continue
+    // A Sheet row claiming the sentinel would take over the uncategorised toggle and
+    // make its own events unfilterable. Dropping it is the cheap way to keep the id
+    // space disjoint.
+    if (!id || id === UNCATEGORISED || seen.has(id)) continue
     seen.add(id)
     out.push({ id, name: String(row?.name ?? '').trim() || id })
   }
@@ -54,10 +71,10 @@ export function hiddenSet(hidden) {
 /**
  * Applies the filter.
  *
- * An event whose category is empty — or names a category no longer in the tab — is
- * always shown. Hiding it would make events disappear with no toggle able to bring them
- * back, which is indistinguishable from data loss. That case is normal right after the
- * migration, when nothing is categorised yet.
+ * An event whose category is empty, or which names a category no longer in the tab,
+ * falls in the UNCATEGORISED bucket and is hidden only when that bucket's own toggle
+ * is off. Everything stays reachable: whatever is hidden has a switch in the bar that
+ * brings it back.
  *
  * @param {ReadonlyArray<import('../layout/time.js').ScheduleEvent>} events
  * @param {Set<string>} hidden
@@ -66,10 +83,11 @@ export function hiddenSet(hidden) {
 export function visibleEvents(events, hidden, categories) {
   if (hidden.size === 0) return events
   const known = new Set(categories.map((c) => c.id))
+  const hideUncategorised = hidden.has(UNCATEGORISED)
 
   return events.filter((event) => {
     const category = String(event.category ?? '').trim()
-    if (!category || !known.has(category)) return true
+    if (!category || !known.has(category)) return !hideUncategorised
     return !hidden.has(category)
   })
 }

@@ -540,7 +540,12 @@ function render() {
 
   // Filtering is a view concern, so it happens here rather than in the layout engine —
   // the axis still fits the whole week, so hiding a category does not rescale the grid.
-  const layout = layoutWeek(visibleEvents(eventsWithDraft(), hidden, cats))
+  //
+  // The draft is filtered separately, which is to say not at all: a new event carries no
+  // category, so with «Без категорії» switched off it would vanish from under you the
+  // instant you tapped to create it.
+  const visible = visibleEvents(currentEvents(), hidden, cats)
+  const layout = layoutWeek(state.draftEvent ? [...visible, state.draftEvent] : visible)
   const editable = state.prefs.editingEnabled && Boolean(state.snapshot)
 
   const app = el('div', 'app')

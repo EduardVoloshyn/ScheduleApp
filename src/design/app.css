@@ -617,11 +617,9 @@ body {
 
 .cat--all { border-style: solid; color: var(--ink-quiet); }
 
-.cats__note {
-  font-size: var(--text-xs);
-  color: var(--ink-faint);
-  white-space: nowrap;
-}
+/* A toggle like the others, but quieter: it is not one of the owner's categories, it is
+   what is left over once they are accounted for. */
+.cat--none { color: var(--ink-quiet); }
 
 /* ================================================== buttons with an icon ==== */
 

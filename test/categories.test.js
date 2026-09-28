@@ -1,5 +1,6 @@
 import { eq, ok, test } from './harness.js'
 import {
+  UNCATEGORISED,
   categoryCounts,
   hiddenSet,
   parseCategories,
@@ -55,21 +56,45 @@ test('hiding a category removes exactly its events', () => {
   eq(visible.map((e) => e.id), ['b', 'c', 'd'])
 })
 
-test('an uncategorised event is never hidden', () => {
-  // Otherwise events vanish with no toggle able to bring them back, which is
-  // indistinguishable from data loss — and every event is uncategorised right after
-  // the migration.
+test('hiding every real category leaves the uncategorised ones', () => {
+  // They have their own toggle now, so hiding the named categories must not touch them.
   const visible = visibleEvents(EVENTS, hiddenSet(['lessons', 'sport']), CATS)
-  ok(visible.some((e) => e.id === 'c'), 'uncategorised event was hidden')
+  eq(visible.map((e) => e.id), ['c', 'd'])
 })
 
-test('an event naming a deleted category is never hidden', () => {
-  const visible = visibleEvents(EVENTS, hiddenSet(['lessons', 'sport', 'deleted-cat']), CATS)
-  ok(visible.some((e) => e.id === 'd'), 'orphaned event was hidden')
+test('an event naming a deleted category follows the uncategorised toggle', () => {
+  // 'deleted-cat' is not in CATS, so hiding it by name must do nothing at all.
+  const byName = visibleEvents(EVENTS, hiddenSet(['deleted-cat']), CATS)
+  ok(byName.some((e) => e.id === 'd'), 'an unknown id filtered an event')
+
+  const byBucket = visibleEvents(EVENTS, hiddenSet([UNCATEGORISED]), CATS)
+  ok(!byBucket.some((e) => e.id === 'd'), 'the orphan ignored the uncategorised toggle')
 })
 
-test('hiding every category still leaves the unfilterable ones', () => {
-  eq(visibleEvents(EVENTS, hiddenSet(['lessons', 'sport']), CATS).map((e) => e.id), ['c', 'd'])
+test('the uncategorised toggle hides exactly the uncategorised events', () => {
+  const visible = visibleEvents(EVENTS, hiddenSet([UNCATEGORISED]), CATS)
+  eq(visible.map((e) => e.id), ['a', 'b'])
+})
+
+test('everything can be hidden at once, and nothing else', () => {
+  const visible = visibleEvents(EVENTS, hiddenSet(['lessons', 'sport', UNCATEGORISED]), CATS)
+  eq(visible, [])
+})
+
+test('the uncategorised toggle is independent of the named ones', () => {
+  const visible = visibleEvents(EVENTS, hiddenSet(['lessons', UNCATEGORISED]), CATS)
+  eq(visible.map((e) => e.id), ['b'])
+})
+
+test('a Sheet row claiming the sentinel id is dropped', () => {
+  // Otherwise it would own the uncategorised toggle and its own events would become
+  // unfilterable — the exact hole this feature exists to close.
+  eq(parseCategories([{ id: UNCATEGORISED, name: 'Спроба' }, { id: 'ok' }]).map((c) => c.id), ['ok'])
+})
+
+test('toggleHidden treats the sentinel like any other id', () => {
+  eq(toggleHidden(new Set(), UNCATEGORISED), [UNCATEGORISED])
+  eq(toggleHidden(new Set([UNCATEGORISED]), UNCATEGORISED), [])
 })
 
 /* ------------------------------------------------------------------ counts ---- */

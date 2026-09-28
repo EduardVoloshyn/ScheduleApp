@@ -10,6 +10,7 @@ import { setupCard } from '../src/ui/setup-card.js'
 import { settingsPanel } from '../src/ui/settings-panel.js'
 import { templatesPanel } from '../src/ui/templates-panel.js'
 import { categoryBar } from '../src/ui/category-bar.js'
+import { UNCATEGORISED } from '../src/model/categories.js'
 import { templateSheet } from '../src/ui/template-sheet.js'
 import { aboutPanel } from '../src/ui/about-panel.js'
 import { RELEASED, VERSION } from '../src/version.js'
@@ -442,12 +443,55 @@ test('"show all" appears only while something is hidden', () => {
   eq(some.findAll('cat--all').length, 1)
 })
 
-test('uncategorised events are called out, since no toggle governs them', () => {
+test('uncategorised events get a toggle of their own, with their count', () => {
   const bar = categoryBar({
     categories: CATS, hidden: new Set(), counts: {}, uncategorised: 19,
     onToggle: () => {}, onShowAll: () => {},
   })
-  ok(bar.find('cats__note').textContent.includes('19'))
+  const chip = bar.find('cat--none')
+  ok(chip, 'no uncategorised toggle was rendered')
+  ok(chip.textContent.includes('Без категорії'))
+  ok(chip.textContent.includes('19'))
+})
+
+test('the uncategorised toggle reports the sentinel id, not a real category', () => {
+  let toggled = null
+  const bar = categoryBar({
+    categories: CATS, hidden: new Set(), counts: {}, uncategorised: 4,
+    onToggle: (id) => { toggled = id }, onShowAll: () => {},
+  })
+  bar.find('cat--none').dispatch('click', {})
+  eq(toggled, UNCATEGORISED)
+})
+
+test('no uncategorised toggle when every event has a category', () => {
+  const bar = categoryBar({
+    categories: CATS, hidden: new Set(), counts: { lessons: 2, sport: 1 }, uncategorised: 0,
+    onToggle: () => {}, onShowAll: () => {},
+  })
+  eq(bar.findAll('cat--none').length, 0)
+})
+
+test('the uncategorised toggle switches off like any other', () => {
+  const bar = categoryBar({
+    categories: CATS, hidden: new Set([UNCATEGORISED]), counts: {}, uncategorised: 7,
+    onToggle: () => {}, onShowAll: () => {},
+  })
+  const chip = bar.find('cat--none')
+  ok(chip.className.includes('cat--off'), 'hidden bucket did not read as off')
+  // "Show all" has to appear, or the events it hides have no way back.
+  eq(bar.findAll('cat--all').length, 1)
+})
+
+test('the reset sits after the filters, not between them', () => {
+  const bar = categoryBar({
+    categories: CATS, hidden: new Set(['sport']), counts: {}, uncategorised: 3,
+    onToggle: () => {}, onShowAll: () => {},
+  })
+  const classes = bar.findAll('cat').map((n) => n.className)
+  eq(classes.length, 4)
+  ok(classes[2].includes('cat--none'), 'uncategorised toggle is not third')
+  ok(classes[3].includes('cat--all'), '"show all" is not last')
 })
 
 test('the editor offers a category select only when categories exist', () => {
